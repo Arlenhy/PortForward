@@ -23,7 +23,8 @@ int create_socket();
 int create_server(int sockfd, int port);
 void transmitdata(LPVOID data);
 void bind2conn(int port1, char *host, int port2);
-void ascii2bin(char *p, int len);
+//void ascii2bin(char *pChar, int len);
+//void bin2ascii(char *pChar, int len);
 
 
 int main(int argc, char* argv[])
@@ -40,9 +41,9 @@ int main(int argc, char* argv[])
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	iConnectPort = 5678;
-	strncpy_s(sTransmitHost, "127.0.0.1", HOSTLEN);
-	iTransmitPort = 7788;
+	iConnectPort = 9000;/*atoi(argv[1]);*/
+	strncpy_s(sTransmitHost, /*argv[2]*/"127.0.0.1", HOSTLEN);
+	iTransmitPort = /*atoi(argv[3]);*/7788;
 	bind2conn(iConnectPort, sTransmitHost, iTransmitPort);
 	WSACleanup();
 	return 0;
@@ -56,7 +57,7 @@ void bind2conn(int port1, char *host, int port2)
 
 	HANDLE hThread = NULL;
 	transocket sock;
-	DWORD dwThreadID;
+//	DWORD dwThreadID;
 
 	if(port1 > 65535 || port1 < 1)
 	{
@@ -98,7 +99,8 @@ void bind2conn(int port1, char *host, int port2)
 		memcpy((char *)sock.host, host, HOSTLEN);
 		sock.port = port2;
 
-		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)transmitdata, (LPVOID)&sock, 0, &dwThreadID);
+//		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)transmitdata, (LPVOID)&sock, 0, &dwThreadID);
+		transmitdata((LPVOID)&sock);
 
  		if(hThread == NULL)
 		{
@@ -151,17 +153,17 @@ void transmitdata(LPVOID data)
 
 	timeset.tv_sec = TIMEOUT;
 	timeset.tv_usec = 0;
+	
+	FD_ZERO(&readfd);
+	FD_ZERO(&writefd);
 
 	while(1)
 	{
-		FD_ZERO(&readfd);
-		FD_ZERO(&writefd);
-
 		FD_SET((UINT)fd1, &readfd);
 		FD_SET((UINT)fd1, &writefd);
 		FD_SET((UINT)fd2, &readfd);
 		FD_SET((UINT)fd2, &writefd);
-
+	
 		result = select(maxfd, &readfd, &writefd, NULL, &timeset);
 		if((result<0) && (errno!=EINTR))
 		{
@@ -173,21 +175,20 @@ void transmitdata(LPVOID data)
 			printf("[-] Socket time out.\r\n");
 			break;
 		}
+		
 
  		if(FD_ISSET(fd1, &readfd))
 		{
-//			printf("[+] Select fd1 OK.\r\n");
 			if(totalread1 < MAXSIZE)
 			{
 				read1 = recvfrom(fd1, read_in1, MAXSIZE - totalread1, 0, (sockaddr *)&client1, &structsize1);
-				
-				if((read1 == SOCKET_ERROR) || (read1 == 0))
+				if((read1 == SOCKET_ERROR))
 				{
 					printf("[-] Read fd1 data error,maybe close?\r\n");
 					break;
 				}
 				memcpy(send_out1 + totalread1, read_in1, read1);
-				printf(" Recv from client %5d bytes.\r\n", read1);
+				printf(" Recv from client %5d bytes.\n[%s]\r\n", read1, read_in1);
 				totalread1 += read1;
 				memset(read_in1, 0, MAXSIZE);
 			}
@@ -200,19 +201,17 @@ void transmitdata(LPVOID data)
 			while(totalread1 > 0)
 			{
 				send1 = sendto(fd2, send_out1 + sendcount1, totalread1, 0, (sockaddr *)&client2, structsize1);
-				if(send1 == 0) break;
+				//if(send1 == 0) break;
 				if((send1 < 0) && (errno != EINTR))
 				{
 					printf("[-] Send to fd2 unknow error.\r\n");
 					err = 1;
 					break;
 				}
-
+				printf(" Send to server %5d bytes.\n[%s]\r\n", send1, send_out1 + sendcount1);
 				if((send1 < 0) && (errno == ENOSPC)) break;
 				sendcount1 += send1;
 				totalread1 -= send1;
-
-				printf(" Send to server %5d bytes.\r\n", send1);
 			}
 
 			if(err == 1) break;
@@ -230,15 +229,16 @@ void transmitdata(LPVOID data)
 			if(totalread2 < MAXSIZE)
 			{
 				read2 = recvfrom(fd2, read_in2, MAXSIZE - totalread2, 0, (sockaddr*)&client2, &structsize2);
-				if(read2==0)break;
-				if((read2<0) && (errno!=EINTR))
+				//if(read2==0)break;
+				printf("%d\n", read2);
+				if((read2 < 0) && (errno!=EINTR))
 				{
 					printf("[-] Read fd2 data error,maybe close?\r\n\r\n");
 					break;
 				}
 
 				memcpy(send_out2+totalread2,read_in2,read2);
-				printf(" Recv from server %5d bytes.\r\n", read2);
+				printf(" Recv from server %5d bytes.\n[%s]\r\n", read2, read_in2);
 				totalread2+=read2;
 				memset(read_in2,0,MAXSIZE);
 			}
@@ -251,18 +251,17 @@ void transmitdata(LPVOID data)
 			while(totalread2>0)
 			{
 				send2 = sendto(fd1, send_out2+sendcount2, totalread2, 0, (sockaddr*)&client1, structsize1);
-				if(send2==0) break;
+				//if(send2==0) break;
 				if((send2<0) && (errno!=EINTR))
 				{
 					printf("[-] Send to fd1 unknow error.\r\n");
 					err2=1;
 					break;
 				}
+				printf(" Send to client%5d bytes.\n[%s]\r\n", send2, send_out2 + sendcount2);
 				if((send2<0) && (errno==ENOSPC)) break;
 				sendcount2+=send2;
 				totalread2-=send2;
-
-				printf(" Send to client%5d bytes.\r\n", send2);
 			}
 			if(err2==1) break;
 			if((totalread2>0) && (sendcount2 > 0))
@@ -272,8 +271,9 @@ void transmitdata(LPVOID data)
 			}
 			else
 				memset(send_out2,0,MAXSIZE);
-			Sleep(5);
 		}
+
+		Sleep(5);
 	}
 	closesocket(fd1);
 	closesocket(fd2);
@@ -309,3 +309,30 @@ int create_server(int sockfd, int port)
 	}
 	return 1;
 }
+
+/*
+void ascii2bin(char *pChar, int len)
+{
+	char c;
+	for(int i = 0; i < len; i++)
+	{
+		c = *(pChar +i);
+		if(c >= '0' && c <= '9')
+			c -= '0';
+		else if(c >= 'A' || c <= 'F')
+		{
+			c -= 'A';
+			c += 10;
+		}
+		else if(c >= 'a' && c <= 'f')
+		{
+			c -= 'a';
+			c += 10;
+		}
+	}
+}
+void bin2ascii(char *pChar, int len)
+{
+}
+
+*/
