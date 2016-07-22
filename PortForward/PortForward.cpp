@@ -6,17 +6,16 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define TIMEOUT 100
-#define MAXSIZE 20480
-#define HOSTLEN 40
-#define CONNECTNUM 5
+#define TIMEOUT 100		//select轮训时间
+#define MAXSIZE 20480	//字符缓冲区空间大小
+#define HOSTLEN 40		//主机地址长度
 
 struct transocket
 {
-	SOCKET fd1;
-	SOCKET fd2;
-	char host[HOSTLEN];
-	int port;
+	SOCKET fd1;		//本机监听端口
+	SOCKET fd2;		//本机转发服务器端口
+	char host[HOSTLEN];	//服务器地址
+	int port;		//服务器端口
 };
 
 int create_socket();
@@ -39,10 +38,10 @@ int main(int argc, char* argv[])
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	iConnectPort = atoi(argv[1]);
-	port = atoi(argv[2]);
-	strncpy_s(sTransmitHost, argv[3], HOSTLEN);
-	iTransmitPort = atoi(argv[4]);
+	iConnectPort = atoi(argv[1]);	//监听客户端端口
+	port = atoi(argv[2]);			//监听服务端端口
+	strncpy_s(sTransmitHost, argv[3], HOSTLEN);//服务器地址
+	iTransmitPort = atoi(argv[4]);		//服务器端口
 	bind2conn(iConnectPort, port, sTransmitHost, iTransmitPort);
 	WSACleanup();
 	return 0;
