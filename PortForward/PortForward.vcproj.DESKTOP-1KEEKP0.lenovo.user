@@ -37,8 +37,8 @@
 			Name="Release|Win32"
 			>
 			<DebugSettings
-				Command="C:\Users\Arlen\Desktop\Release\PortForward.exe"
-				WorkingDirectory="C:\Users\Arlen\Desktop\Release"
+				Command="$(TargetPath)"
+				WorkingDirectory=""
 				CommandArguments=""
 				Attach="false"
 				DebuggerType="0"
@@ -50,7 +50,7 @@
 				SQLDebugging=""
 				Environment=""
 				EnvironmentMerge="true"
-				DebuggerFlavor="1"
+				DebuggerFlavor="0"
 				MPIRunCommand=""
 				MPIRunArguments=""
 				MPIRunWorkingDirectory=""

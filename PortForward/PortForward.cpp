@@ -6,7 +6,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define TIMEOUT 300
+#define TIMEOUT 100
 #define MAXSIZE 20480
 #define HOSTLEN 40
 #define CONNECTNUM 5
@@ -22,18 +22,16 @@ struct transocket
 int create_socket();
 int create_server(int sockfd, int port);
 void transmitdata(LPVOID data);
-void bind2conn(int port1, char *host, int port2);
-//void ascii2bin(char *pChar, int len);
-//void bin2ascii(char *pChar, int len);
+void bind2conn(int port1,int port3, char *host, int port2);
 
 
 int main(int argc, char* argv[])
 {
-//	if(argc != 4)
-//		return 0;
+	if(argc != 5)
+		return 0;
 
 	char sConnectHost[HOSTLEN], sTransmitHost[HOSTLEN];
-	int iConnectPort = 0, iTransmitPort = 0;
+	int iConnectPort = 0, iTransmitPort = 0, port = 0;;
 
 	memset(sConnectHost, 0, HOSTLEN);
 	memset(sTransmitHost, 0, HOSTLEN);
@@ -41,15 +39,16 @@ int main(int argc, char* argv[])
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	iConnectPort = 9000;/*atoi(argv[1]);*/
-	strncpy_s(sTransmitHost, /*argv[2]*/"127.0.0.1", HOSTLEN);
-	iTransmitPort = /*atoi(argv[3]);*/7788;
-	bind2conn(iConnectPort, sTransmitHost, iTransmitPort);
+	iConnectPort = atoi(argv[1]);
+	port = atoi(argv[2]);
+	strncpy_s(sTransmitHost, argv[3], HOSTLEN);
+	iTransmitPort = atoi(argv[4]);
+	bind2conn(iConnectPort, port, sTransmitHost, iTransmitPort);
 	WSACleanup();
 	return 0;
 }
 
-void bind2conn(int port1, char *host, int port2)
+void bind2conn(int port1,int port3, char *host, int port2)
 {
 	SOCKET sockfd1, sockfd2;
 	int size;
@@ -57,7 +56,6 @@ void bind2conn(int port1, char *host, int port2)
 
 	HANDLE hThread = NULL;
 	transocket sock;
-//	DWORD dwThreadID;
 
 	if(port1 > 65535 || port1 < 1)
 	{
@@ -83,7 +81,7 @@ void bind2conn(int port1, char *host, int port2)
 
 	if((sockfd2 = create_socket()) == 0) return;
 	
-	if((create_server(sockfd2, 6789)) == 0)
+	if((create_server(sockfd2, port3)) == 0)
 	{
 		closesocket(sockfd1);
 		closesocket(sockfd2);
@@ -99,7 +97,6 @@ void bind2conn(int port1, char *host, int port2)
 		memcpy((char *)sock.host, host, HOSTLEN);
 		sock.port = port2;
 
-//		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)transmitdata, (LPVOID)&sock, 0, &dwThreadID);
 		transmitdata((LPVOID)&sock);
 
  		if(hThread == NULL)
@@ -184,11 +181,12 @@ void transmitdata(LPVOID data)
 				read1 = recvfrom(fd1, read_in1, MAXSIZE - totalread1, 0, (sockaddr *)&client1, &structsize1);
 				if((read1 == SOCKET_ERROR))
 				{
-					printf("[-] Read fd1 data error,maybe close?\r\n");
-					break;
+					continue;
+			/*		printf("[-] Read fd1 data error,maybe close?\r\n");
+					break;*/
 				}
 				memcpy(send_out1 + totalread1, read_in1, read1);
-				printf(" Recv from client %5d bytes.\n[%s]\r\n", read1, read_in1);
+//				printf(" Recv from client %5d bytes.\n[%s]\r\n", read1, read_in1);
 				totalread1 += read1;
 				memset(read_in1, 0, MAXSIZE);
 			}
@@ -204,11 +202,12 @@ void transmitdata(LPVOID data)
 				//if(send1 == 0) break;
 				if((send1 < 0) && (errno != EINTR))
 				{
-					printf("[-] Send to fd2 unknow error.\r\n");
+				//	printf("[-] Send to fd2 unknow error.\r\n");
 					err = 1;
-					break;
+				//	break;
+					continue;
 				}
-				printf(" Send to server %5d bytes.\n[%s]\r\n", send1, send_out1 + sendcount1);
+//				printf(" Send to server %5d bytes.\n[%s]\r\n", send1, send_out1 + sendcount1);
 				if((send1 < 0) && (errno == ENOSPC)) break;
 				sendcount1 += send1;
 				totalread1 -= send1;
@@ -230,15 +229,15 @@ void transmitdata(LPVOID data)
 			{
 				read2 = recvfrom(fd2, read_in2, MAXSIZE - totalread2, 0, (sockaddr*)&client2, &structsize2);
 				//if(read2==0)break;
-				printf("%d\n", read2);
 				if((read2 < 0) && (errno!=EINTR))
 				{
-					printf("[-] Read fd2 data error,maybe close?\r\n\r\n");
-					break;
+					//printf("[-] Read fd2 data error,maybe close?\r\n\r\n");
+					//break;
+					continue;
 				}
 
 				memcpy(send_out2+totalread2,read_in2,read2);
-				printf(" Recv from server %5d bytes.\n[%s]\r\n", read2, read_in2);
+//				printf(" Recv from server %5d bytes.\n[%s]\r\n", read2, read_in2);
 				totalread2+=read2;
 				memset(read_in2,0,MAXSIZE);
 			}
@@ -254,11 +253,12 @@ void transmitdata(LPVOID data)
 				//if(send2==0) break;
 				if((send2<0) && (errno!=EINTR))
 				{
-					printf("[-] Send to fd1 unknow error.\r\n");
+					//printf("[-] Send to fd1 unknow error.\r\n");
 					err2=1;
-					break;
+					//break;
+					continue;
 				}
-				printf(" Send to client%5d bytes.\n[%s]\r\n", send2, send_out2 + sendcount2);
+//				printf(" Send to client%5d bytes.\n[%s]\r\n", send2, send_out2 + sendcount2);
 				if((send2<0) && (errno==ENOSPC)) break;
 				sendcount2+=send2;
 				totalread2-=send2;
@@ -272,8 +272,6 @@ void transmitdata(LPVOID data)
 			else
 				memset(send_out2,0,MAXSIZE);
 		}
-
-		Sleep(5);
 	}
 	closesocket(fd1);
 	closesocket(fd2);
@@ -309,30 +307,3 @@ int create_server(int sockfd, int port)
 	}
 	return 1;
 }
-
-/*
-void ascii2bin(char *pChar, int len)
-{
-	char c;
-	for(int i = 0; i < len; i++)
-	{
-		c = *(pChar +i);
-		if(c >= '0' && c <= '9')
-			c -= '0';
-		else if(c >= 'A' || c <= 'F')
-		{
-			c -= 'A';
-			c += 10;
-		}
-		else if(c >= 'a' && c <= 'f')
-		{
-			c -= 'a';
-			c += 10;
-		}
-	}
-}
-void bin2ascii(char *pChar, int len)
-{
-}
-
-*/
